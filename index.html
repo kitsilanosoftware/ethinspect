@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Eth Inspect</title>
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap.min.css">
+<!--<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap-theme.min.css">-->
+<script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
+<script src="./web3.js"></script>
+<script>
+$(function() {
+web3.setProvider(new web3.providers.HttpProvider('http://localhost:8545'));
+
+var updateBlock = function() {
+  web3.eth.getBlock('latest', function(error, block) {
+    $('#block').text(block.number + ', hash: ' + block.hash);
+  });
+};
+web3.eth.filter('latest').watch(updateBlock);
+updateBlock();
+
+var toUintHex = function(s) {
+	if (s.slice(0, 2) == '0x')
+		s = s.slice(2);
+	while (s.length < 64)
+		s = '00' + s;
+	return s.slice(s.length - 64);
+}
+var fromHex = function(s) {
+	if (s.slice(0, 2) == '0x')
+		s = s.slice(2);
+	var out = '';
+	for (var i = 0; i < s.length; i += 2)
+		out += String.fromCharCode(parseInt(s.slice(i, i + 2), 16));
+	return out;
+}
+
+$('#storageInspector').on('submit', function(event) {
+	event.preventDefault();
+	var contract = $('#contractAddr').val();
+	var storage = $('#storageAddr').val();
+	var index = $('#index').val();
+	var offset = $('#offset').val();
+	if (storage == '')
+	{
+		$('#storageContent').text('');
+		return;
+	}
+	if (index != '')
+		storage = web3.sha3(fromHex(toUintHex(web3.toHex(index)) + toUintHex(web3.toHex(storage))), true);
+//	if (offset != '')
+//		storage = new BigNumber(storage) + new BigNumber(offset);
+	console.log(storage);
+	web3.eth.getStorageAt(contract, storage, function(err, data) {
+		$('#storageContent').text(data);
+	});
+});
+});
+</script>
+<style type="text/css">
+body { padding-bottom: 70px; }
+</style>
+</head>
+<body>
+<div class="container">
+<h3>Eth Inspect</h3>
+<div class="panel panel-default">
+<div class="panel-heading">Inspect Storage</div>
+<div class="panel-body">
+<form id="storageInspector" action="" method="get">
+	<div class="form-group"><input type="text" class="form-control" placeholder="Contract Address" id="contractAddr"></div>
+	<div class="form-group"><input type="text" class="form-control" placeholder="Storage Address" id="storageAddr"></div>
+	<div class="form-group"><input type="text" class="form-control" placeholder="Mapping Index (optional)" id="index"></div>
+	<div class="form-group"><input type="text" class="form-control" placeholder="Offset (optional)" id="offset"></div>
+	<pre id="storageContent"></pre>
+       	<input type="submit" style="display:none"/>
+</form>
+</div>
+</div>
+
+<footer class="footer navbar navbar-fixed-bottom">
+<div class="container">
+<p>Current block: <span id="block"/></p>
+</div>
+</footer>
+
+</body>
+</html>
